@@ -1,0 +1,9 @@
+# While loop test
+
+set counter as i32 to 0
+
+loop while counter < 5
+    print(counter)
+    set counter to counter + 1
+
+print(999)

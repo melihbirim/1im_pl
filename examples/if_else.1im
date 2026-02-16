@@ -1,0 +1,18 @@
+# If/then/else conditional testing
+
+set x as i32 to 10
+
+if x > 5 then
+    print(1)
+else
+    print(0)
+
+# Another test
+set age as i32 to 25
+
+if age < 18 then
+    print(0)
+else if age < 65 then
+    print(1)
+else
+    print(2)

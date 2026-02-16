@@ -1,0 +1,29 @@
+# Test all type annotations
+
+# Integer types
+set small as i8 to 42
+set medium as i32 to 1000
+set large as i64 to 999999
+
+# Unsigned integers
+set byte as u8 to 255
+set word as u32 to 65535
+
+# Floating point
+set ratio as f32 to 3.14
+set precise as f64 to 2.71828
+
+# Boolean
+set flag as bool to true
+set nope as bool to false
+
+# Print them all
+print(small)
+print(medium)
+print(large)
+print(byte)
+print(word)
+print(ratio)
+print(precise)
+print(flag)
+print(nope)
