@@ -834,7 +834,7 @@
 24293 205697034 1760154801000000000 0c7d3ee9ea8e698a843ee6039fd161c4 1 std/os/linux/bpf/helpers.zig
 3221 205696781 1760154801000000000 fda67b74062c7f535bb0a6d0f1fe74fb 1 std/crypto/codecs/asn1/der/ArrayListReverse.zig
 7515 221121200 1771253922358281905 008e3fa1d1e03d518f00d3f5fd64f2e9 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/main.zig
-7721 221122402 1771249673173354671 dc6b5eab87805ca34feec87d7525fee9 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/lexer.zig
+8261 221122402 1771258841138573051 6380ddd0965274249843e983eb7f393f 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/lexer.zig
 25750 221122854 1771257714341568565 53ed72f5ebea627e3e1c47811c0ae720 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/parser.zig
 18612 221161164 1771255881017048470 c54dc7361865ee87fb8cc99aea5bb479 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/codegen.zig
 1574 221121879 1771249633061879166 7fbf3679887af78a9e08b2a1fab71b3b 0 /Users/melihbirim/code/birim.one.dev/1im_pl/compiler/src/token.zig

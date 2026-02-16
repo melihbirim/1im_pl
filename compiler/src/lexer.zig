@@ -88,25 +88,29 @@ pub const Lexer = struct {
 
             // Two-char operators (check before single-char)
             if (c == '=' and self.peek(1) == '=') {
-                try self.addToken(.eq_eq, "==");
+                const start_col = self.col;
+                try self.addTokenAt(.eq_eq, "==", start_col);
                 self.advance();
                 self.advance();
                 continue;
             }
             if (c == '!' and self.peek(1) == '=') {
-                try self.addToken(.bang_eq, "!=");
+                const start_col = self.col;
+                try self.addTokenAt(.bang_eq, "!=", start_col);
                 self.advance();
                 self.advance();
                 continue;
             }
             if (c == '<' and self.peek(1) == '=') {
-                try self.addToken(.lt_eq, "<=");
+                const start_col = self.col;
+                try self.addTokenAt(.lt_eq, "<=", start_col);
                 self.advance();
                 self.advance();
                 continue;
             }
             if (c == '>' and self.peek(1) == '=') {
-                try self.addToken(.gt_eq, ">=");
+                const start_col = self.col;
+                try self.addTokenAt(.gt_eq, ">=", start_col);
                 self.advance();
                 self.advance();
                 continue;
@@ -158,11 +162,15 @@ pub const Lexer = struct {
     }
 
     fn addToken(self: *Lexer, tag: TokenType, lexeme: []const u8) LexerError!void {
+        try self.addTokenAt(tag, lexeme, self.col);
+    }
+
+    fn addTokenAt(self: *Lexer, tag: TokenType, lexeme: []const u8, col: usize) LexerError!void {
         self.tokens.append(self.allocator, .{
             .tag = tag,
             .lexeme = lexeme,
             .line = self.line,
-            .col = self.col,
+            .col = col,
         }) catch return LexerError.OutOfMemory;
     }
 
@@ -173,6 +181,7 @@ pub const Lexer = struct {
     }
 
     fn readString(self: *Lexer) LexerError!void {
+        const start_col = self.col;
         self.advance(); // skip opening "
         const start = self.pos;
         while (self.pos < self.source.len and self.source[self.pos] != '"') {
@@ -181,12 +190,13 @@ pub const Lexer = struct {
         }
         if (self.pos >= self.source.len) return LexerError.UnterminatedString;
         const lexeme = self.source[start..self.pos];
-        try self.addToken(.string_literal, lexeme);
+        try self.addTokenAt(.string_literal, lexeme, start_col);
         self.advance(); // skip closing "
     }
 
     fn readNumber(self: *Lexer) LexerError!void {
         const start = self.pos;
+        const start_col = self.col;
         while (self.pos < self.source.len and std.ascii.isDigit(self.source[self.pos])) {
             self.advance();
         }
@@ -196,14 +206,15 @@ pub const Lexer = struct {
             while (self.pos < self.source.len and std.ascii.isDigit(self.source[self.pos])) {
                 self.advance();
             }
-            try self.addToken(.float_literal, self.source[start..self.pos]);
+            try self.addTokenAt(.float_literal, self.source[start..self.pos], start_col);
         } else {
-            try self.addToken(.int_literal, self.source[start..self.pos]);
+            try self.addTokenAt(.int_literal, self.source[start..self.pos], start_col);
         }
     }
 
     fn readName(self: *Lexer) LexerError!void {
         const start = self.pos;
+        const start_col = self.col;
         while (self.pos < self.source.len and
             (std.ascii.isAlphanumeric(self.source[self.pos]) or self.source[self.pos] == '_'))
         {
@@ -211,7 +222,7 @@ pub const Lexer = struct {
         }
         const lexeme = self.source[start..self.pos];
         const tag = keyword_map.get(lexeme) orelse TokenType.name;
-        try self.addToken(tag, lexeme);
+        try self.addTokenAt(tag, lexeme, start_col);
     }
 
     const keyword_map = std.StaticStringMap(TokenType).initComptime(.{
