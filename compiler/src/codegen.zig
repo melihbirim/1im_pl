@@ -5,7 +5,6 @@ const ast = @import("ast.zig");
 
 pub const CodegenError = error{
     UnsupportedNode,
-    UnknownVariable,
     OutOfMemory,
 };
 
@@ -48,7 +47,6 @@ pub const Codegen = struct {
     output: std.ArrayList(u8),
     var_types: std.StringHashMap(ValueType),
     indent_level: usize,
-    in_function: bool,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Codegen {
@@ -56,7 +54,6 @@ pub const Codegen = struct {
             .output = .empty,
             .var_types = std.StringHashMap(ValueType).init(allocator),
             .indent_level = 1,
-            .in_function = false,
             .allocator = allocator,
         };
     }
@@ -243,8 +240,6 @@ pub const Codegen = struct {
 
         try self.emit(") {\n");
 
-        const old_in_function = self.in_function;
-        self.in_function = true;
         self.indent_level += 1;
 
         // Emit body
@@ -253,7 +248,6 @@ pub const Codegen = struct {
         }
 
         self.indent_level -= 1;
-        self.in_function = old_in_function;
         try self.emit("}\n\n");
     }
 
@@ -326,13 +320,9 @@ pub const Codegen = struct {
     }
 
     fn emitFor(self: *Codegen, fl: ast.ForLoop) CodegenError!void {
-        // For now, emit comment - proper for loop requires range support
-        try self.emitIndent();
-        try self.emit("// For loop not fully implemented\n");
-        try self.emitIndent();
-        try self.emit("// loop for ");
-        try self.emit(fl.variable);
-        try self.emit(" in ...\n");
+        _ = self;
+        _ = fl;
+        return CodegenError.UnsupportedNode;
     }
 
     fn emitBreak(self: *Codegen) CodegenError!void {
@@ -346,13 +336,9 @@ pub const Codegen = struct {
     }
 
     fn emitTryCatch(self: *Codegen, tc: ast.TryCatch) CodegenError!void {
-        // Simplified - not real error unions yet
-        try self.emitIndent();
-        try self.emit("// try/catch not fully implemented\n");
-        try self.emitIndent();
-        try self.emit("{");
-        try self.emitExpr(tc.try_expr.*);
-        try self.emit("}\n");
+        _ = self;
+        _ = tc;
+        return CodegenError.UnsupportedNode;
     }
 
     fn emitExprStmt(self: *Codegen, es: ast.ExprStmt) CodegenError!void {

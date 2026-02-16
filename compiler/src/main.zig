@@ -12,6 +12,10 @@ pub fn main() !void {
     defer _ = gpa_state.deinit();
     const gpa = gpa_state.allocator();
 
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
     // ── Parse CLI args ──────────────────────────────────────────
     const args = try std.process.argsAlloc(gpa);
     defer std.process.argsFree(gpa, args);
@@ -44,7 +48,7 @@ pub fn main() !void {
     };
 
     // ── Parse ───────────────────────────────────────────────────
-    var parser = Parser.init(gpa, tokens);
+    var parser = Parser.init(arena, tokens);
 
     const program = parser.parse() catch |err| {
         var buf: [256]u8 = undefined;

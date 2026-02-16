@@ -146,9 +146,8 @@ Original 10 node types → **23 node types**:
 4. **Implicit return** - Last expression as return value
 
 ### Known Issues:
-1. **Newline escaping** - Some C codegen emit() calls have literal newlines instead of `\n`
-2. **Memory leaks** - Parser allocates AST nodes but never frees them (arena allocator TODO)
-3. **Block detection** - Function/if/loop bodies use heuristic dedent detection (needs proper INDENT/DEDENT tokens)
+1. **Memory leaks** - Parser allocates AST nodes but never frees them (arena allocator TODO)
+2. **Block detection** - Function/if/loop bodies use heuristic dedent detection (needs proper INDENT/DEDENT tokens)
 
 ## File Statistics
 

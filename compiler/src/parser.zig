@@ -89,9 +89,7 @@ pub const Parser = struct {
         // Regular assignment: `set name to value`
         try self.expect(.kw_to);
 
-        const value = try self.parseExpr();
-        const value_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        value_ptr.* = value;
+        const value_ptr = try self.allocNode(try self.parseExpr());
 
         return .{ .set_assign = .{
             .name = var_name,
@@ -104,9 +102,7 @@ pub const Parser = struct {
         const type_info = try self.parseType();
         try self.expect(.kw_to);
 
-        const value = try self.parseExpr();
-        const value_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        value_ptr.* = value;
+        const value_ptr = try self.allocNode(try self.parseExpr());
 
         return .{ .typed_assign = .{
             .name = name,
@@ -150,47 +146,13 @@ pub const Parser = struct {
         // Parse function body (must be on next line, indented)
         self.skipNewlines();
 
-        var body: std.ArrayList(ast.Node) = .empty;
-        while (self.current().tag != .eof and self.current().tag != .kw_set and
-            self.current().tag != .kw_if and self.current().tag != .kw_loop)
-        {
-            self.skipNewlines();
-            if (self.current().tag == .eof) break;
-
-            // Simple heuristic: if we see a top-level keyword, end the function
-            if (self.pos > 0 and self.tokens[self.pos - 1].tag == .newline) {
-                if (self.current().tag == .kw_set or self.current().tag == .kw_if or
-                    self.current().tag == .kw_loop)
-                {
-                    break;
-                }
-            }
-
-            const stmt = try self.parseStmt();
-            body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-
-            // If we hit a newline followed by dedent (approximated by seeing top-level keyword), break
-            if (self.current().tag == .newline) {
-                const next_pos = self.pos + 1;
-                if (next_pos < self.tokens.len) {
-                    const next_tag = self.tokens[next_pos].tag;
-                    if (next_tag == .kw_set or next_tag == .kw_if or next_tag == .kw_loop or next_tag == .eof) {
-                        self.pos += 1; // consume newline
-                        break;
-                    }
-                }
-            }
-
-            if (self.current().tag == .newline) {
-                self.pos += 1;
-            }
-        }
+        const body = try self.parseIndentedBlock(&.{});
 
         return .{ .function_def = .{
             .name = name,
             .params = params.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
             .return_type = return_type,
-            .body = body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+            .body = body,
         } };
     }
 
@@ -224,9 +186,7 @@ pub const Parser = struct {
             return .{ .return_stmt = .{ .value = null } };
         }
 
-        const value = try self.parseExpr();
-        const value_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        value_ptr.* = value;
+        const value_ptr = try self.allocNode(try self.parseExpr());
 
         return .{ .return_stmt = .{ .value = value_ptr } };
     }
@@ -234,38 +194,12 @@ pub const Parser = struct {
     fn parseIf(self: *Parser) ParseError!ast.Node {
         try self.expect(.kw_if);
 
-        const condition = try self.parseExpr();
-        const cond_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        cond_ptr.* = condition;
+        const cond_ptr = try self.allocNode(try self.parseExpr());
 
         try self.expect(.kw_then);
         self.skipNewlines();
 
-        var then_body: std.ArrayList(ast.Node) = .empty;
-        var first_stmt_col: ?usize = null;
-
-        while (self.current().tag != .eof and self.current().tag != .kw_else) {
-            // Skip newlines and comments
-            while (self.current().tag == .newline) {
-                self.pos += 1;
-            }
-
-            // Check for else or eof
-            if (self.current().tag == .kw_else or self.current().tag == .eof) break;
-
-            // Check for dedent - if less indented than first statement, exit block
-            if (first_stmt_col) |first_col| {
-                if (self.current().col < first_col) {
-                    break;
-                }
-            } else {
-                // First statement in block - record indentation
-                first_stmt_col = self.current().col;
-            }
-
-            const stmt = try self.parseStmt();
-            then_body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-        }
+        const then_body = try self.parseIndentedBlock(&.{ .kw_else });
 
         // Parse else if / else
         var else_ifs: std.ArrayList(ast.ElseIf) = .empty;
@@ -278,78 +212,28 @@ pub const Parser = struct {
                 // else if
                 self.pos += 1; // consume 'if'
 
-                const elif_cond = try self.parseExpr();
-                const elif_cond_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-                elif_cond_ptr.* = elif_cond;
+                const elif_cond_ptr = try self.allocNode(try self.parseExpr());
 
                 try self.expect(.kw_then);
                 self.skipNewlines();
 
-                var elif_body: std.ArrayList(ast.Node) = .empty;
-                var elif_first_col: ?usize = null;
-
-                while (self.current().tag != .eof and self.current().tag != .kw_else) {
-                    // Skip newlines
-                    while (self.current().tag == .newline) {
-                        self.pos += 1;
-                    }
-
-                    // Check for else or eof
-                    if (self.current().tag == .kw_else or self.current().tag == .eof) break;
-
-                    // Check for dedent
-                    if (elif_first_col) |first_col| {
-                        if (self.current().col < first_col) {
-                            break;
-                        }
-                    } else {
-                        elif_first_col = self.current().col;
-                    }
-
-                    const stmt = try self.parseStmt();
-                    elif_body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-                }
+                const elif_body = try self.parseIndentedBlock(&.{ .kw_else });
 
                 else_ifs.append(self.allocator, .{
                     .condition = elif_cond_ptr,
-                    .body = elif_body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+                    .body = elif_body,
                 }) catch return ParseError.OutOfMemory;
             } else {
                 // else
                 self.skipNewlines();
-
-                var else_stmts: std.ArrayList(ast.Node) = .empty;
-                var else_first_col: ?usize = null;
-
-                while (self.current().tag != .eof) {
-                    // Skip newlines
-                    while (self.current().tag == .newline) {
-                        self.pos += 1;
-                    }
-
-                    if (self.current().tag == .eof) break;
-
-                    // Check for dedent
-                    if (else_first_col) |first_col| {
-                        if (self.current().col < first_col) {
-                            break;
-                        }
-                    } else {
-                        else_first_col = self.current().col;
-                    }
-
-                    const stmt = try self.parseStmt();
-                    else_stmts.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-                }
-
-                else_body = else_stmts.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory;
+                else_body = try self.parseIndentedBlock(&.{});
                 break;
             }
         }
 
         return .{ .if_stmt = .{
             .condition = cond_ptr,
-            .then_body = then_body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+            .then_body = then_body,
             .else_ifs = else_ifs.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
             .else_body = else_body,
         } };
@@ -374,40 +258,15 @@ pub const Parser = struct {
     fn parseWhileLoop(self: *Parser) ParseError!ast.Node {
         try self.expect(.kw_while);
 
-        const condition = try self.parseExpr();
-        const cond_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        cond_ptr.* = condition;
+        const cond_ptr = try self.allocNode(try self.parseExpr());
 
         self.skipNewlines();
 
-        var body: std.ArrayList(ast.Node) = .empty;
-        var first_stmt_col: ?usize = null;
-
-        while (self.current().tag != .eof) {
-            // Skip newlines
-            while (self.current().tag == .newline) {
-                self.pos += 1;
-            }
-
-            if (self.current().tag == .eof) break;
-
-            // Check for dedent - if current statement is less indented than first, exit block
-            if (first_stmt_col) |first_col| {
-                if (self.current().col < first_col) {
-                    break;
-                }
-            } else {
-                // First statement in block - record its indentation
-                first_stmt_col = self.current().col;
-            }
-
-            const stmt = try self.parseStmt();
-            body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-        }
+        const body = try self.parseIndentedBlock(&.{});
 
         return .{ .while_loop = .{
             .condition = cond_ptr,
-            .body = body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+            .body = body,
         } };
     }
 
@@ -420,32 +279,16 @@ pub const Parser = struct {
 
         try self.expect(.kw_in);
 
-        const iterable = try self.parseExpr();
-        const iter_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        iter_ptr.* = iterable;
+        const iter_ptr = try self.allocNode(try self.parseExpr());
 
         self.skipNewlines();
 
-        var body: std.ArrayList(ast.Node) = .empty;
-        while (self.current().tag != .eof and self.current().tag != .kw_set and self.current().tag != .kw_loop) {
-            if (self.current().tag == .newline) {
-                self.pos += 1;
-                if (self.current().tag == .kw_set or self.current().tag == .kw_loop or self.current().tag == .eof) break;
-                continue;
-            }
-
-            const stmt = try self.parseStmt();
-            body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-
-            if (self.current().tag == .newline) {
-                self.pos += 1;
-            }
-        }
+        const body = try self.parseIndentedBlock(&.{});
 
         return .{ .for_loop = .{
             .variable = var_tok.lexeme,
             .iterable = iter_ptr,
-            .body = body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+            .body = body,
         } };
     }
 
@@ -457,9 +300,7 @@ pub const Parser = struct {
             return .{ .break_stmt = .{ .value = null } };
         }
 
-        const value = try self.parseExpr();
-        const value_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        value_ptr.* = value;
+        const value_ptr = try self.allocNode(try self.parseExpr());
 
         return .{ .break_stmt = .{ .value = value_ptr } };
     }
@@ -472,9 +313,7 @@ pub const Parser = struct {
     fn parseTryCatch(self: *Parser) ParseError!ast.Node {
         try self.expect(.kw_try);
 
-        const try_expr = try self.parseExpr();
-        const try_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        try_ptr.* = try_expr;
+        const try_ptr = try self.allocNode(try self.parseExpr());
 
         try self.expect(.kw_catch);
 
@@ -486,25 +325,17 @@ pub const Parser = struct {
 
         self.skipNewlines();
 
-        var catch_body: std.ArrayList(ast.Node) = .empty;
-        while (self.current().tag != .eof and self.current().tag != .kw_set) {
-            const stmt = try self.parseStmt();
-            catch_body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
-            if (self.current().tag == .newline) self.pos += 1;
-            if (self.current().tag == .kw_set) break;
-        }
+        const catch_body = try self.parseIndentedBlock(&.{});
 
         return .{ .try_catch = .{
             .try_expr = try_ptr,
             .catch_var = catch_var,
-            .catch_body = catch_body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+            .catch_body = catch_body,
         } };
     }
 
     fn parseExprStmt(self: *Parser) ParseError!ast.Node {
-        const expr = try self.parseExpr();
-        const expr_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        expr_ptr.* = expr;
+        const expr_ptr = try self.allocNode(try self.parseExpr());
         return .{ .expr_stmt = .{ .expr = expr_ptr } };
     }
 
@@ -584,16 +415,12 @@ pub const Parser = struct {
     fn parseUnary(self: *Parser) ParseError!ast.Node {
         if (self.current().tag == .minus) {
             self.pos += 1;
-            const operand = try self.parseUnary();
-            const operand_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-            operand_ptr.* = operand;
+            const operand_ptr = try self.allocNode(try self.parseUnary());
             return .{ .unary_op = .{ .op = .negate, .operand = operand_ptr } };
         }
         if (self.current().tag == .kw_not) {
             self.pos += 1;
-            const operand = try self.parseUnary();
-            const operand_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-            operand_ptr.* = operand;
+            const operand_ptr = try self.allocNode(try self.parseUnary());
             return .{ .unary_op = .{ .op = .bool_not, .operand = operand_ptr } };
         }
         return self.parsePostfix();
@@ -713,11 +540,48 @@ pub const Parser = struct {
         }
     }
 
+    fn parseIndentedBlock(self: *Parser, stop_tags: []const TokenType) ParseError![]const ast.Node {
+        var body: std.ArrayList(ast.Node) = .empty;
+        var first_stmt_col: ?usize = null;
+
+        while (self.current().tag != .eof) {
+            while (self.current().tag == .newline) {
+                self.pos += 1;
+            }
+
+            if (self.current().tag == .eof) break;
+            if (self.isStopTag(stop_tags, self.current().tag)) break;
+
+            if (first_stmt_col) |first_col| {
+                if (self.current().col < first_col) break;
+            } else {
+                first_stmt_col = self.current().col;
+            }
+
+            const stmt = try self.parseStmt();
+            body.append(self.allocator, stmt) catch return ParseError.OutOfMemory;
+        }
+
+        return body.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory;
+    }
+
+    fn isStopTag(self: *Parser, stop_tags: []const TokenType, tag: TokenType) bool {
+        _ = self;
+        for (stop_tags) |stop_tag| {
+            if (tag == stop_tag) return true;
+        }
+        return false;
+    }
+
+    fn allocNode(self: *Parser, node: ast.Node) ParseError!*ast.Node {
+        const node_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
+        node_ptr.* = node;
+        return node_ptr;
+    }
+
     fn makeBinary(self: *Parser, op: ast.BinaryOp.Op, left: ast.Node, right: ast.Node) ParseError!ast.Node {
-        const left_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        left_ptr.* = left;
-        const right_ptr = self.allocator.create(ast.Node) catch return ParseError.OutOfMemory;
-        right_ptr.* = right;
+        const left_ptr = try self.allocNode(left);
+        const right_ptr = try self.allocNode(right);
         return .{ .binary_op = .{
             .op = op,
             .left = left_ptr,

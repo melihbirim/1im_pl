@@ -14,11 +14,14 @@ This is the **first working compiler** for 1im. Currently implemented:
 - ✅ Parser (recursive descent → AST)
 - ✅ Code generation (to C)
 - ✅ Automatic compilation via system C compiler
-- ✅ Basic types: `i64` integers
-- ✅ Variables: `set <name> to <value>`
+- ✅ Basic types and annotations: `i8`-`i64`, `u8`-`u64`, `f32`, `f64`, `bool`, `str`
+- ✅ Variables: `set <name> to <value>` and `set <name> as <type> to <value>`
+- ✅ Functions with typed params/returns
+- ✅ Control flow: `if`/`then`/`else`, `loop while`
 - ✅ Built-in functions: `print(<expr>)`
 - ✅ Arithmetic expressions: `+`, `-`, `*`, `/`, `%`
 - ✅ Comments: `#`
+- ⚠️ `loop for` and `try/catch` are parsed but not codegened yet (compiler errors)
 
 ## Example
 
@@ -107,8 +110,8 @@ From the v1 grammar spec, here's what needs implementation (in priority order):
 - [ ] Error handling: `T!E` error unions, `try`, `catch` (parser ready, codegen TODO)
 - [ ] String interpolation: `"hello {name}"` (not yet implemented)
 
-**Phase 1 Status:** Core features implemented! ✅  
-Lexer, parser, and AST support all Phase 1 constructs. C code generation works for types, functions, and basic control flow. Some codegen issues with newline escaping remain.
+**Phase 1 Status:** Parser complete, codegen in progress.  
+Lexer, parser, and AST support all Phase 1 constructs. C code generation works for types, functions, `if/else`, and `loop while`. `loop for` and `try/catch` are not codegened yet.
 
 ### Phase 2 — Systems Features (2-3 months)
 
@@ -144,10 +147,8 @@ Lexer, parser, and AST support all Phase 1 constructs. C code generation works f
 
 ## Current Limitations
 
-- Only `i64` integers supported (no other types yet)
-- No functions (other than built-in `print`)
-- No control flow (`if`, `loop`, etc.)
-- No error handling
+- `loop for` and `try/catch` are parsed but not codegened yet
+- String interpolation is not implemented
 - No imports/modules
 - Memory leaks in compiler (not a problem for a CLI tool, but noted)
 
