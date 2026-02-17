@@ -20,6 +20,7 @@ pub const TokenType = enum {
     kw_import,
     kw_from,
     kw_parallel,
+    kw_fun,
     kw_true,
     kw_false,
     kw_null,
@@ -62,6 +63,8 @@ pub const TokenType = enum {
     rbrace,
     comma,
     dot,
+    dot_dot,
+    dot_dot_eq,
     colon,
 
     // Operators
@@ -70,6 +73,7 @@ pub const TokenType = enum {
     star,
     slash,
     percent,
+    bang,
     eq_eq,
     bang_eq,
     lt,

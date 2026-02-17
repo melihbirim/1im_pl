@@ -1,0 +1,17 @@
+# Function params/returns for arrays and slices
+
+set first with nums as [3]i32 returns i32
+    return nums[0]
+
+set make3 returns [3]i32
+    return [7, 8, 9]
+
+set id_slice with nums as []i32 returns []i32
+    return nums
+
+set arr as [3]i32 to make3()
+print(first(arr))
+
+set s as []i32 to [4, 5, 6]
+set s2 as []i32 to id_slice(s)
+print(s2[1])

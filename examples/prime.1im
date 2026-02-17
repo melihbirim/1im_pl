@@ -1,0 +1,15 @@
+# Prime test (simple check)
+
+set n as i32 to 29
+set is_prime as bool to true
+
+if n < 2 then
+    set is_prime to false
+else
+    set i as i32 to 2
+    loop while i * i <= n
+        if n % i == 0 then
+            set is_prime to false
+        set i to i + 1
+
+print(is_prime)

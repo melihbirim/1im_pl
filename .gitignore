@@ -1,0 +1,8 @@
+.zig-cache
+./zig-cache
+./zig-out
+./zig-lock.json
+./zig-project.json
+./compiler/zig-cache
+compiler/.zig-cache/*
+bench/out

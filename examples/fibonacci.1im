@@ -1,0 +1,12 @@
+# Fibonacci test (first 10 numbers)
+
+set a as i32 to 0
+set b as i32 to 1
+set i as i32 to 0
+
+loop while i < 10
+    print(a)
+    set next to a + b
+    set a to b
+    set b to next
+    set i to i + 1

@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stddef.h>
+#include <pthread.h>
 
 
 int main(void) {

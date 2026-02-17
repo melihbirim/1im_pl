@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stddef.h>
+#include <pthread.h>
 
 
 int main(void) {
@@ -11,6 +13,6 @@ int main(void) {
         printf("%d\n", (int)counter);
         counter = (counter + 1);
     }
-    printf("%" PRId64 "\n", (int64_t)999);
+    printf("%d\n", (int)999);
     return 0;
 }

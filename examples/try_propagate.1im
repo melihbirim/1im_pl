@@ -1,0 +1,11 @@
+# Try propagation test
+
+set fail returns i32!str
+    return "boom"
+
+set wrap returns i32!str
+    set x to try fail()
+    return x
+
+try wrap() catch err
+    print(err)

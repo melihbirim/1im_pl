@@ -1,0 +1,16 @@
+# Parallel loop and block demo
+
+set nums as [4]i32 to [1, 2, 3, 4]
+
+parallel loop for n in nums
+    print(n)
+
+fun show_a
+    print(100)
+
+fun show_b
+    print(200)
+
+parallel
+    show_a()
+    show_b()

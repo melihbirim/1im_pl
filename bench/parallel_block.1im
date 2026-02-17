@@ -1,0 +1,39 @@
+# Parallel block benchmark (four independent workloads)
+
+fun work1
+    set start as i64 to 0
+    set n as i64 to 1000000000
+    set sum as i64 to 0
+    loop for i in start..n
+        set sum to sum + i
+    print(sum)
+
+fun work2
+    set start as i64 to 0
+    set n as i64 to 1000000000
+    set sum as i64 to 0
+    loop for i in start..n
+        set sum to sum + i
+    print(sum)
+
+fun work3
+    set start as i64 to 0
+    set n as i64 to 1000000000
+    set sum as i64 to 0
+    loop for i in start..n
+        set sum to sum + i
+    print(sum)
+
+fun work4
+    set start as i64 to 0
+    set n as i64 to 1000000000
+    set sum as i64 to 0
+    loop for i in start..n
+        set sum to sum + i
+    print(sum)
+
+parallel
+    work1()
+    work2()
+    work3()
+    work4()

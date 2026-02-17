@@ -1,0 +1,59 @@
+# Toy hash benchmark (parallel, 4 workers, total runs 10000)
+
+fun worker1
+    set start as i64 to 0
+    set runs as i64 to 2500
+    set inner as i64 to 1000
+    set mod as i64 to 2147483647
+    set h as i64 to 7
+    loop for r in start..runs
+        set i as i64 to 0
+        loop while i < inner
+            set h to (h * 31 + i + r) % mod
+            set i to i + 1
+    print(h)
+
+fun worker2
+    set start as i64 to 0
+    set runs as i64 to 2500
+    set inner as i64 to 1000
+    set mod as i64 to 2147483647
+    set h as i64 to 11
+    loop for r in start..runs
+        set i as i64 to 0
+        loop while i < inner
+            set h to (h * 31 + i + r) % mod
+            set i to i + 1
+    print(h)
+
+fun worker3
+    set start as i64 to 0
+    set runs as i64 to 2500
+    set inner as i64 to 1000
+    set mod as i64 to 2147483647
+    set h as i64 to 13
+    loop for r in start..runs
+        set i as i64 to 0
+        loop while i < inner
+            set h to (h * 31 + i + r) % mod
+            set i to i + 1
+    print(h)
+
+fun worker4
+    set start as i64 to 0
+    set runs as i64 to 2500
+    set inner as i64 to 1000
+    set mod as i64 to 2147483647
+    set h as i64 to 17
+    loop for r in start..runs
+        set i as i64 to 0
+        loop while i < inner
+            set h to (h * 31 + i + r) % mod
+            set i to i + 1
+    print(h)
+
+parallel
+    worker1()
+    worker2()
+    worker3()
+    worker4()

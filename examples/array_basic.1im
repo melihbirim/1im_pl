@@ -1,0 +1,5 @@
+# Array basic test
+
+set nums as [3]i32 to [1, 2, 3]
+print(nums[0])
+print(nums[2])

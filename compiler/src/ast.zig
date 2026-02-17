@@ -9,9 +9,11 @@ pub const Node = union(enum) {
     if_stmt: IfStmt,
     while_loop: WhileLoop,
     for_loop: ForLoop,
+    parallel_block: ParallelBlock,
     break_stmt: BreakStmt,
     continue_stmt: ContinueStmt,
     try_catch: TryCatch,
+    try_expr: TryExpr,
     expr_stmt: ExprStmt,
     call: Call,
     int_literal: IntLiteral,
@@ -22,6 +24,10 @@ pub const Node = union(enum) {
     variable: Variable,
     binary_op: BinaryOp,
     unary_op: UnaryOp,
+    array_literal: ArrayLiteral,
+    index_expr: IndexExpr,
+    index_assign: IndexAssign,
+    range: Range,
 };
 
 pub const Program = struct {
@@ -77,12 +83,19 @@ pub const ElseIf = struct {
 pub const WhileLoop = struct {
     condition: *const Node,
     body: []const Node,
+    parallel: bool,
 };
 
 /// `loop for <var> in <iter>\n<body>`
 pub const ForLoop = struct {
     variable: []const u8,
     iterable: *const Node,
+    body: []const Node,
+    parallel: bool,
+};
+
+/// `parallel\n<body>`
+pub const ParallelBlock = struct {
     body: []const Node,
 };
 
@@ -99,6 +112,11 @@ pub const TryCatch = struct {
     try_expr: *const Node,
     catch_var: ?[]const u8,
     catch_body: []const Node,
+};
+
+/// `try <expr>` used as an expression (propagate on error)
+pub const TryExpr = struct {
+    expr: *const Node,
 };
 
 /// Expression used as a statement (e.g., a function call)
@@ -166,6 +184,30 @@ pub const UnaryOp = struct {
     };
 };
 
+/// Array literal: `[a, b, c]`
+pub const ArrayLiteral = struct {
+    elements: []const Node,
+};
+
+/// Indexing expression: `target[index]`
+pub const IndexExpr = struct {
+    target: *const Node,
+    index: *const Node,
+};
+
+/// Index assignment: `set target[index] to value`
+pub const IndexAssign = struct {
+    target: *const Node,
+    value: *const Node,
+};
+
+/// Range expression: `start..end` or `start..=end`
+pub const Range = struct {
+    start: *const Node,
+    end: *const Node,
+    inclusive: bool,
+};
+
 /// Type information
 pub const Type = union(enum) {
     i8,
@@ -181,6 +223,9 @@ pub const Type = union(enum) {
     bool,
     str,
     void,
+    error_union: ErrorUnionType,
+    array: ArrayType,
+    slice: SliceType,
 
     pub fn toCString(self: Type) []const u8 {
         return switch (self) {
@@ -197,6 +242,9 @@ pub const Type = union(enum) {
             .bool => "bool",
             .str => "const char*",
             .void => "void",
+            .array => |arr| arr.elem.toCString(),
+            .slice => |s| s.elem.toCString(),
+            .error_union => "void",
         };
     }
 
@@ -210,6 +258,22 @@ pub const Type = union(enum) {
             .bool => "%d",
             .str => "%s",
             .void => "",
+            .array, .slice => "%p",
+            .error_union => "%p",
         };
     }
+};
+
+pub const ErrorUnionType = struct {
+    ok: *const Type,
+    err: *const Type,
+};
+
+pub const ArrayType = struct {
+    len: usize,
+    elem: *const Type,
+};
+
+pub const SliceType = struct {
+    elem: *const Type,
 };

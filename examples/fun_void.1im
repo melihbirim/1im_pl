@@ -1,0 +1,6 @@
+# Fun with no return (void)
+
+fun say with x
+    print(x)
+
+say(123)

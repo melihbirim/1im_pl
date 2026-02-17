@@ -1,0 +1,7 @@
+# Fun with default param types and inferred return
+
+fun mul with a, b
+    return a * b
+
+set result to mul(6, 7)
+print(result)

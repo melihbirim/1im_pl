@@ -86,7 +86,24 @@ pub const Lexer = struct {
                 continue;
             }
 
+            // Three-char operators (check before two-char)
+            if (c == '.' and self.peek(1) == '.' and self.peek(2) == '=') {
+                const start_col = self.col;
+                try self.addTokenAt(.dot_dot_eq, "..=", start_col);
+                self.advance();
+                self.advance();
+                self.advance();
+                continue;
+            }
+
             // Two-char operators (check before single-char)
+            if (c == '.' and self.peek(1) == '.') {
+                const start_col = self.col;
+                try self.addTokenAt(.dot_dot, "..", start_col);
+                self.advance();
+                self.advance();
+                continue;
+            }
             if (c == '=' and self.peek(1) == '=') {
                 const start_col = self.col;
                 try self.addTokenAt(.eq_eq, "==", start_col);
@@ -132,6 +149,7 @@ pub const Lexer = struct {
                 '*' => .star,
                 '/' => .slash,
                 '%' => .percent,
+                '!' => .bang,
                 '<' => .lt,
                 '>' => .gt,
                 else => null,
@@ -200,8 +218,10 @@ pub const Lexer = struct {
         while (self.pos < self.source.len and std.ascii.isDigit(self.source[self.pos])) {
             self.advance();
         }
-        // Check for float
-        if (self.pos < self.source.len and self.source[self.pos] == '.') {
+        // Check for float (only if '.' is followed by a digit)
+        if (self.pos < self.source.len and self.source[self.pos] == '.' and
+            self.peek(1) != null and std.ascii.isDigit(self.peek(1).?))
+        {
             self.advance();
             while (self.pos < self.source.len and std.ascii.isDigit(self.source[self.pos])) {
                 self.advance();
@@ -244,6 +264,7 @@ pub const Lexer = struct {
         .{ "import", .kw_import },
         .{ "from", .kw_from },
         .{ "parallel", .kw_parallel },
+        .{ "fun", .kw_fun },
         .{ "true", .kw_true },
         .{ "false", .kw_false },
         .{ "null", .kw_null },

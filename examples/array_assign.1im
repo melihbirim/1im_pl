@@ -1,0 +1,7 @@
+# Array element assignment test
+
+set nums as [3]i32 to [1, 2, 3]
+set nums[1] to 9
+print(nums[0])
+print(nums[1])
+print(nums[2])

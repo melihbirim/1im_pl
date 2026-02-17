@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stddef.h>
+#include <pthread.h>
 
 int32_t add(int32_t x, int32_t y);
 
@@ -11,7 +13,7 @@ int32_t add(int32_t x, int32_t y) {
 }
 
 int main(void) {
-    int64_t result = add(5, 3);
-    printf("%" PRId64 "\n", (int64_t)result);
+    int32_t result = add(5, 3);
+    printf("%d\n", (int)result);
     return 0;
 }

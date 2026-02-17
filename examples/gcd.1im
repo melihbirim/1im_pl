@@ -1,0 +1,11 @@
+# GCD test (Euclidean algorithm)
+
+set a as i32 to 48
+set b as i32 to 18
+
+loop while b != 0
+    set temp to b
+    set b to a % b
+    set a to temp
+
+print(a)

@@ -56,13 +56,24 @@ pub const Parser = struct {
 
     fn parseStmt(self: *Parser) ParseError!ast.Node {
         switch (self.current().tag) {
+            .kw_parallel => return self.parseParallel(),
             .kw_set => return self.parseSetOrFunction(),
+            .kw_fun => return self.parseFunDef(),
             .kw_return => return self.parseReturn(),
             .kw_if => return self.parseIf(),
             .kw_loop => return self.parseLoop(),
             .kw_break => return self.parseBreak(),
             .kw_continue => return self.parseContinue(),
-            .kw_try => return self.parseTryCatch(),
+            .kw_try => {
+                const saved = self.pos;
+                return self.parseTryCatch() catch |err| {
+                    if (err == ParseError.UnexpectedToken) {
+                        self.pos = saved;
+                        return self.parseExprStmt();
+                    }
+                    return err;
+                };
+            },
             else => return self.parseExprStmt(),
         }
     }
@@ -76,8 +87,33 @@ pub const Parser = struct {
         const var_name = name_tok.lexeme;
         self.pos += 1;
 
-        // Check if it's a function: `set name with...` or `set name as fn`
-        if (self.current().tag == .kw_with or (self.current().tag == .kw_as and self.peek(1).tag == .kw_fn)) {
+        if (self.current().tag == .lbracket) {
+            var target: ast.Node = .{ .variable = .{ .name = var_name } };
+            while (self.current().tag == .lbracket) {
+                self.pos += 1; // consume '['
+                const index_expr = try self.parseExpr();
+                try self.expect(.rbracket);
+                const target_ptr = try self.allocNode(target);
+                const index_ptr = try self.allocNode(index_expr);
+                target = .{ .index_expr = .{
+                    .target = target_ptr,
+                    .index = index_ptr,
+                } };
+            }
+
+            try self.expect(.kw_to);
+            const value_ptr = try self.allocNode(try self.parseExpr());
+            const target_ptr = try self.allocNode(target);
+            return .{ .index_assign = .{
+                .target = target_ptr,
+                .value = value_ptr,
+            } };
+        }
+
+        // Check if it's a function: `set name with...`, `set name returns ...`, or `set name as fn`
+        if (self.current().tag == .kw_with or self.current().tag == .kw_returns or
+            (self.current().tag == .kw_as and self.peek(1).tag == .kw_fn))
+        {
             return self.parseFunctionDef(var_name);
         }
 
@@ -111,7 +147,20 @@ pub const Parser = struct {
         } };
     }
 
+    fn parseFunDef(self: *Parser) ParseError!ast.Node {
+        try self.expect(.kw_fun);
+        const name_tok = self.current();
+        if (name_tok.tag != .name) return ParseError.UnexpectedToken;
+        const name = name_tok.lexeme;
+        self.pos += 1;
+        return self.parseFunctionDefAfterName(name);
+    }
+
     fn parseFunctionDef(self: *Parser, name: []const u8) ParseError!ast.Node {
+        return self.parseFunctionDefAfterName(name);
+    }
+
+    fn parseFunctionDefAfterName(self: *Parser, name: []const u8) ParseError!ast.Node {
         var params: std.ArrayList(ast.Param) = .empty;
         var return_type: ?ast.Type = null;
 
@@ -124,8 +173,11 @@ pub const Parser = struct {
                 if (param_name_tok.tag != .name) return ParseError.UnexpectedToken;
                 self.pos += 1;
 
-                try self.expect(.kw_as);
-                const param_type = try self.parseType();
+                var param_type: ast.Type = .i32;
+                if (self.current().tag == .kw_as) {
+                    self.pos += 1;
+                    param_type = try self.parseType();
+                }
 
                 params.append(self.allocator, .{
                     .name = param_name_tok.lexeme,
@@ -157,8 +209,41 @@ pub const Parser = struct {
     }
 
     fn parseType(self: *Parser) ParseError!ast.Type {
+        var base = try self.parseTypePrimary();
+
+        if (self.current().tag == .bang) {
+            self.pos += 1;
+            const err_type = try self.parseType();
+            const ok_ptr = try self.allocType(base);
+            const err_ptr = try self.allocType(err_type);
+            base = .{ .error_union = .{ .ok = ok_ptr, .err = err_ptr } };
+        }
+
+        return base;
+    }
+
+    fn parseTypePrimary(self: *Parser) ParseError!ast.Type {
         const tok = self.current();
         self.pos += 1;
+
+        if (tok.tag == .lbracket) {
+            if (self.current().tag == .rbracket) {
+                self.pos += 1;
+                const elem = try self.parseType();
+                const elem_ptr = try self.allocType(elem);
+                return .{ .slice = .{ .elem = elem_ptr } };
+            }
+
+            if (self.current().tag != .int_literal) return ParseError.UnexpectedToken;
+            const len_tok = self.current();
+            self.pos += 1;
+            try self.expect(.rbracket);
+
+            const len = std.fmt.parseInt(usize, len_tok.lexeme, 10) catch return ParseError.UnexpectedToken;
+            const elem = try self.parseType();
+            const elem_ptr = try self.allocType(elem);
+            return .{ .array = .{ .len = len, .elem = elem_ptr } };
+        }
 
         return switch (tok.tag) {
             .kw_i8 => .i8,
@@ -199,7 +284,7 @@ pub const Parser = struct {
         try self.expect(.kw_then);
         self.skipNewlines();
 
-        const then_body = try self.parseIndentedBlock(&.{ .kw_else });
+        const then_body = try self.parseIndentedBlock(&.{.kw_else});
 
         // Parse else if / else
         var else_ifs: std.ArrayList(ast.ElseIf) = .empty;
@@ -217,7 +302,7 @@ pub const Parser = struct {
                 try self.expect(.kw_then);
                 self.skipNewlines();
 
-                const elif_body = try self.parseIndentedBlock(&.{ .kw_else });
+                const elif_body = try self.parseIndentedBlock(&.{.kw_else});
 
                 else_ifs.append(self.allocator, .{
                     .condition = elif_cond_ptr,
@@ -244,18 +329,18 @@ pub const Parser = struct {
 
         // Check for while or for
         if (self.current().tag == .kw_while) {
-            return self.parseWhileLoop();
+            return self.parseWhileLoop(false);
         }
 
         if (self.current().tag == .kw_for) {
-            return self.parseForLoop();
+            return self.parseForLoop(false);
         }
 
         // Infinite loop not implemented yet
         return ParseError.UnexpectedToken;
     }
 
-    fn parseWhileLoop(self: *Parser) ParseError!ast.Node {
+    fn parseWhileLoop(self: *Parser, parallel: bool) ParseError!ast.Node {
         try self.expect(.kw_while);
 
         const cond_ptr = try self.allocNode(try self.parseExpr());
@@ -267,10 +352,11 @@ pub const Parser = struct {
         return .{ .while_loop = .{
             .condition = cond_ptr,
             .body = body,
+            .parallel = parallel,
         } };
     }
 
-    fn parseForLoop(self: *Parser) ParseError!ast.Node {
+    fn parseForLoop(self: *Parser, parallel: bool) ParseError!ast.Node {
         try self.expect(.kw_for);
 
         const var_tok = self.current();
@@ -289,7 +375,27 @@ pub const Parser = struct {
             .variable = var_tok.lexeme,
             .iterable = iter_ptr,
             .body = body,
+            .parallel = parallel,
         } };
+    }
+
+    fn parseParallel(self: *Parser) ParseError!ast.Node {
+        try self.expect(.kw_parallel);
+
+        if (self.current().tag == .kw_loop) {
+            self.pos += 1;
+            if (self.current().tag == .kw_while) {
+                return self.parseWhileLoop(true);
+            }
+            if (self.current().tag == .kw_for) {
+                return self.parseForLoop(true);
+            }
+            return ParseError.UnexpectedToken;
+        }
+
+        self.skipNewlines();
+        const body = try self.parseIndentedBlock(&.{});
+        return .{ .parallel_block = .{ .body = body } };
     }
 
     fn parseBreak(self: *Parser) ParseError!ast.Node {
@@ -367,7 +473,7 @@ pub const Parser = struct {
     }
 
     fn parseComparison(self: *Parser) ParseError!ast.Node {
-        var left = try self.parseAdd();
+        var left = try self.parseRange();
         const cmp_op: ?ast.BinaryOp.Op = switch (self.current().tag) {
             .eq_eq => .eq,
             .bang_eq => .neq,
@@ -379,10 +485,30 @@ pub const Parser = struct {
         };
         if (cmp_op) |op| {
             self.pos += 1;
-            const right = try self.parseAdd();
+            const right = try self.parseRange();
             left = try self.makeBinary(op, left, right);
         }
         return left;
+    }
+
+    fn parseRange(self: *Parser) ParseError!ast.Node {
+        const left = try self.parseAdd();
+
+        const is_range = self.current().tag == .dot_dot or self.current().tag == .dot_dot_eq;
+        if (!is_range) return left;
+
+        const inclusive = self.current().tag == .dot_dot_eq;
+        self.pos += 1;
+
+        const right = try self.parseAdd();
+        const left_ptr = try self.allocNode(left);
+        const right_ptr = try self.allocNode(right);
+
+        return .{ .range = .{
+            .start = left_ptr,
+            .end = right_ptr,
+            .inclusive = inclusive,
+        } };
     }
 
     fn parseAdd(self: *Parser) ParseError!ast.Node {
@@ -423,6 +549,11 @@ pub const Parser = struct {
             const operand_ptr = try self.allocNode(try self.parseUnary());
             return .{ .unary_op = .{ .op = .bool_not, .operand = operand_ptr } };
         }
+        if (self.current().tag == .kw_try) {
+            self.pos += 1;
+            const expr_ptr = try self.allocNode(try self.parseUnary());
+            return .{ .try_expr = .{ .expr = expr_ptr } };
+        }
         return self.parsePostfix();
     }
 
@@ -456,6 +587,16 @@ pub const Parser = struct {
                 node = .{ .call = .{
                     .callee = callee_name,
                     .args = args.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+                } };
+            } else if (self.current().tag == .lbracket) {
+                self.pos += 1; // consume '['
+                const index_expr = try self.parseExpr();
+                try self.expect(.rbracket);
+                const target_ptr = try self.allocNode(node);
+                const index_ptr = try self.allocNode(index_expr);
+                node = .{ .index_expr = .{
+                    .target = target_ptr,
+                    .index = index_ptr,
                 } };
             } else {
                 break;
@@ -504,6 +645,23 @@ pub const Parser = struct {
                 const expr = try self.parseExpr();
                 try self.expect(.rparen);
                 return expr;
+            },
+            .lbracket => {
+                self.pos += 1; // consume '['
+                var elements: std.ArrayList(ast.Node) = .empty;
+                if (self.current().tag != .rbracket) {
+                    const first = try self.parseExpr();
+                    elements.append(self.allocator, first) catch return ParseError.OutOfMemory;
+                    while (self.current().tag == .comma) {
+                        self.pos += 1;
+                        const elem = try self.parseExpr();
+                        elements.append(self.allocator, elem) catch return ParseError.OutOfMemory;
+                    }
+                }
+                try self.expect(.rbracket);
+                return .{ .array_literal = .{
+                    .elements = elements.toOwnedSlice(self.allocator) catch return ParseError.OutOfMemory,
+                } };
             },
             .eof => return ParseError.UnexpectedEof,
             else => return ParseError.UnexpectedToken,
@@ -587,5 +745,11 @@ pub const Parser = struct {
             .left = left_ptr,
             .right = right_ptr,
         } };
+    }
+
+    fn allocType(self: *Parser, t: ast.Type) ParseError!*ast.Type {
+        const t_ptr = self.allocator.create(ast.Type) catch return ParseError.OutOfMemory;
+        t_ptr.* = t;
+        return t_ptr;
     }
 };

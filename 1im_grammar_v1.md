@@ -307,6 +307,15 @@ LValue := NAME { "." NAME | "[" Expr "]" }
 
 ## 6. Functions
 
+Functions can be declared with either `set` or `fun`:
+
+```1im
+fun add with x as i32, y as i32 returns i32
+    return x + y
+```
+
+If `returns` is omitted, the return type is inferred from `return` statements.
+
 ### 6.1 Definition
 
 ```
@@ -1203,6 +1212,7 @@ set mounts to parse []MountInfo from run "mount" with
 #### 12.10.9 Platform abstraction
 
 All built-in parsers work cross-platform. Internally:
+
 - On Linux: reads `/proc`, calls syscalls directly where possible
 - On macOS: uses `sysctl`, `diskutil`, `launchctl`
 - On FreeBSD: appropriate equivalents
@@ -1226,11 +1236,13 @@ No `uname -s | case ... esac` gymnastics. No platform `if` blocks for basic ops.
 #### 12.10.10 Why this matters
 
 Bash script for "find processes using >1GB memory":
+
 ```bash
 ps aux | awk 'NR>1 && $6>1048576 {printf "%s (pid %s): %dMB\n", $11, $2, $6/1024}'
 ```
 
 1im equivalent:
+
 ```
 loop for p in try ps()
     if p.rss > 1024 * 1024 * 1024 then
@@ -1238,6 +1250,7 @@ loop for p in try ps()
 ```
 
 The 1im version is:
+
 - **Type-safe** — `p.rss` is `u64`, not a substring of a line
 - **Readable** — no positional `$6` magic numbers
 - **Portable** — same code on Linux/macOS

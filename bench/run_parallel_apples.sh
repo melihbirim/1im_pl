@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+COMPILER="$ROOT_DIR/compiler/zig-out/bin/1im"
+OUT_DIR="$ROOT_DIR/bench/out"
+ZIG_CACHE_DIR="$OUT_DIR/zig-cache"
+
+SRC_1IM="$ROOT_DIR/bench/parallel_block_seq.1im"
+
+mkdir -p "$OUT_DIR" "$ZIG_CACHE_DIR"
+
+if [ ! -f "$COMPILER" ]; then
+    echo "Compiler not found at $COMPILER"
+    echo "Building compiler..."
+    (cd "$ROOT_DIR/compiler" && zig build)
+fi
+
+echo "--- Building 1im sequential benchmark ---"
+"$COMPILER" "$SRC_1IM" >/dev/null 2>"$OUT_DIR/bench_compile.log"
+
+CODEGEN_DIR="$ROOT_DIR/bench/codegen"
+C_SRC="$CODEGEN_DIR/parallel_block_seq.c"
+ONEIM_BIN="$CODEGEN_DIR/parallel_block_seq"
+if [ ! -f "$ONEIM_BIN" ]; then
+    echo "1im binary not found at $ONEIM_BIN"
+    exit 1
+fi
+
+ONEIM_SEQ_BIN="$CODEGEN_DIR/parallel_block_seq_opt"
+cc -O3 -march=native -pthread -o "$ONEIM_SEQ_BIN" "$C_SRC" >/dev/null 2>&1
+
+if [ ! -f "$ONEIM_SEQ_BIN" ]; then
+    echo "1im sequential bench binary not found at $ONEIM_SEQ_BIN"
+    exit 1
+fi
+
+echo "--- Building Zig sequential benchmark ---"
+zig build-exe "$ROOT_DIR/bench/parallel_block_seq.zig" -OReleaseFast -femit-bin="$OUT_DIR/parallel_block_seq_zig" \
+  --cache-dir "$ZIG_CACHE_DIR" --global-cache-dir "$ZIG_CACHE_DIR" >/dev/null
+
+ZIG_BIN="$OUT_DIR/parallel_block_seq_zig"
+
+echo "--- Running 1im sequential binary ---"
+TIME_1IM="$OUT_DIR/time_1im_parallel_seq.txt"
+/usr/bin/time -p -o "$TIME_1IM" "$ONEIM_SEQ_BIN" >/dev/null 2>&1
+cat "$TIME_1IM"
+
+echo "--- Running Zig sequential binary ---"
+TIME_ZIG="$OUT_DIR/time_zig_parallel_seq.txt"
+/usr/bin/time -p -o "$TIME_ZIG" "$ZIG_BIN" >/dev/null 2>&1
+cat "$TIME_ZIG"

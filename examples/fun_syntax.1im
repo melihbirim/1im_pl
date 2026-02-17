@@ -1,0 +1,7 @@
+# Fun syntax test
+
+fun add with x, y returns i32
+    return x + y
+
+set result to add(5, 7)
+print(result)

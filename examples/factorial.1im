@@ -1,0 +1,10 @@
+# Factorial test
+
+set n as i32 to 5
+set result as i32 to 1
+
+loop while n > 1
+    set result to result * n
+    set n to n - 1
+
+print(result)

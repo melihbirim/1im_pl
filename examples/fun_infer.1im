@@ -1,0 +1,7 @@
+# Fun return type inference
+
+fun add with x, y
+    return x + y
+
+set result to add(2, 4)
+print(result)

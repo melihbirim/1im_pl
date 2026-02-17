@@ -1,6 +1,6 @@
 # Simple function with typed parameters and return
 
-set add with x as i32, y as i32 returns i32
+fun add with x as i32, y as i32 returns i32
     return x + y
 
 set result to add(5, 3)

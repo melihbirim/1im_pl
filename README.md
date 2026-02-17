@@ -19,6 +19,9 @@ This is the **first working compiler** for 1im. Currently implemented:
 - ✅ Functions with typed params/returns
 - ✅ Control flow: `if`/`then`/`else`, `loop while`
 - ✅ Built-in functions: `print(<expr>)`
+- ✅ Built-in functions: `len(<array_or_slice>)`
+- ✅ Fixed-size arrays `[N]T` with literals and indexing
+- ✅ Slices `[]T` with indexing
 - ✅ Arithmetic expressions: `+`, `-`, `*`, `/`, `%`
 - ✅ Comments: `#`
 - ⚠️ `loop for` and `try/catch` are parsed but not codegened yet (compiler errors)
@@ -60,8 +63,14 @@ Phase 1 test programs in `examples/`:
 - **[function.1im](examples/function.1im)** - Function with typed parameters and return
 - **[if_else.1im](examples/if_else.1im)** - Conditional statements (if/then/else if/else)
 - **[while_loop.1im](examples/while_loop.1im)** - While loop with counter
+- **[len_array.1im](examples/len_array.1im)** - `len()` on fixed array
+- **[len_slice.1im](examples/len_slice.1im)** - `len()` on slice
+- **[array_basic.1im](examples/array_basic.1im)** - Fixed-size array literals and indexing
+- **[array_nested.1im](examples/array_nested.1im)** - Nested arrays
+- **[array_assign.1im](examples/array_assign.1im)** - Array element assignment
 
 Run any example:
+
 ```bash
 ./compiler/zig-out/bin/1im examples/types.1im
 ```

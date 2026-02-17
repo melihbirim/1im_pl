@@ -6,6 +6,7 @@ const std = @import("std");
 const Lexer = @import("lexer.zig").Lexer;
 const Parser = @import("parser.zig").Parser;
 const Codegen = @import("codegen.zig").Codegen;
+const Analyzer = @import("semantic.zig").Analyzer;
 
 pub fn main() !void {
     var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .init;
@@ -58,6 +59,17 @@ pub fn main() !void {
             @errorName(err),
         }) catch "parse error\n";
         std.fs.File.stderr().writeAll(msg) catch {};
+        std.process.exit(1);
+    };
+
+    // ── Semantic Analysis ───────────────────────────────────────
+    var analyzer = Analyzer.init(gpa);
+    defer analyzer.deinit();
+
+    _ = analyzer.analyze(program) catch {
+        const msg = if (analyzer.last_error.len > 0) analyzer.last_error else "semantic error\n";
+        std.fs.File.stderr().writeAll(msg) catch {};
+        std.fs.File.stderr().writeAll("\n") catch {};
         std.process.exit(1);
     };
 
@@ -119,7 +131,7 @@ pub fn main() !void {
     // ── Compile C → binary ──────────────────────────────────────
     const compile_result = std.process.Child.run(.{
         .allocator = gpa,
-        .argv = &.{ "cc", "-o", bin_path, c_path, "-O2" },
+        .argv = &.{ "cc", "-o", bin_path, c_path, "-O3", "-march=native", "-pthread" },
     }) catch |err| {
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "failed to invoke C compiler: {s}\n", .{@errorName(err)}) catch "failed to invoke C compiler\n";

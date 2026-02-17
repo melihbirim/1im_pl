@@ -1,0 +1,7 @@
+# For range test
+
+loop for i in 0..5
+    print(i)
+
+loop for j in 1..=3
+    print(j)

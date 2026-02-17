@@ -1,0 +1,7 @@
+# Try/catch test (error unions)
+
+set fail returns i32!str
+    return "boom"
+
+try fail() catch err
+    print(err)
