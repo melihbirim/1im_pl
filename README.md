@@ -116,7 +116,7 @@ From the v1 grammar spec, here's what needs implementation (in priority order):
 - [x] Type annotations: `set x as i32 to 42`
 - [x] Functions: `set add with a as i32, b as i32 returns i32`
 - [x] Control flow: `if`/`then`/`else`, `loop while`, `loop for`
-- [ ] Error handling: `T!E` error unions, `try`, `catch` (parser ready, codegen TODO)
+- [x] Error handling: `T!E` error unions, `try`, `catch` (parser ready, codegen TODO)
 - [ ] String interpolation: `"hello {name}"` (not yet implemented)
 
 **Phase 1 Status:** Parser complete, codegen in progress.  
@@ -163,7 +163,7 @@ Lexer, parser, and AST support all Phase 1 constructs. C code generation works f
 
 ## Directory Structure
 
-```
+```bash
 1im_pl/
 ├── compiler/
 │   ├── src/
