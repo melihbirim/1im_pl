@@ -110,7 +110,7 @@ The compiler:
 
 From the v1 grammar spec, here's what needs implementation (in priority order):
 
-### Phase 1 — Core Language (2-3 months)
+### Phase 1 — Core Language 
 
 - [x] Full type system (`i8`-`i64`, `u8`-`u64`, `f32`, `f64`, `bool`, `str`)
 - [x] Type annotations: `set x as i32 to 42`
@@ -122,7 +122,7 @@ From the v1 grammar spec, here's what needs implementation (in priority order):
 **Phase 1 Status:** Parser complete, codegen in progress.  
 Lexer, parser, and AST support all Phase 1 constructs. C code generation works for types, functions, `if/else`, and `loop while`. `loop for` and `try/catch` are not codegened yet.
 
-### Phase 2 — Systems Features (2-3 months)
+### Phase 2 — Systems Features 
 
 - [ ] Pointers: `*T`, `&x`, `p.*`
 - [ ] Structs & methods
@@ -131,7 +131,7 @@ Lexer, parser, and AST support all Phase 1 constructs. C code generation works f
 - [ ] C FFI: `extern "C"` declarations
 - [ ] Comptime: compile-time evaluation
 
-### Phase 3 — Shell Features (2-3 months)
+### Phase 3 — Shell Features
 
 - [ ] `run` command execution
 - [ ] Pipe chains: `run "ls" | "grep foo"`
@@ -140,7 +140,7 @@ Lexer, parser, and AST support all Phase 1 constructs. C code generation works f
 - [ ] Built-in file operations
 - [ ] Structured parsers: `ps()`, `df()`, `netstat()`
 
-### Phase 4 — Tooling (1-2 months)
+### Phase 4 — Tooling
 
 - [ ] LSP server
 - [ ] Formatter
@@ -148,7 +148,7 @@ Lexer, parser, and AST support all Phase 1 constructs. C code generation works f
 - [ ] Build system (`build.1im`)
 - [ ] Testing framework
 
-### Phase 5 — Self-Hosting (3-6 months)
+### Phase 5 — Self-Hosting
 
 - [ ] Rewrite compiler in 1im itself
 - [ ] Bootstrap procedure
